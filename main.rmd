@@ -1,0 +1,101 @@
+---
+title: "Hoja4_MD"
+author: "Alejandra Guzman, Mariana David, Jorge Caballeros"
+date: "2023-03-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+## Librerias utilizadas
+library(dplyr)
+library(ggplot2)
+library(cluster) #Para calcular la silueta
+library(e1071)#para cmeans
+library(mclust) #mixtures of gaussians
+library(fpc) #para hacer el plotcluster
+library(NbClust) #Para determinar el número de clusters óptimo
+library(factoextra) #Para hacer gráficos bonitos de clustering
+library(hopkins) #Para revisar si vale la pena hacer agrupamiento
+library(GGally) #Para hacer el conjunto de graficos
+library(FeatureImpCluster) #revisa importancia de var
+library(pheatmap) #Para hacer mapa de calor
+library(ggplot2) #para color
+library(caret)
+library(nortest)
+library(tidyverse)
+library(ggpubr)
+library(stats)
+library(Metrics)
+library(rpart) #para analisis de arbol
+library(rpart.plot)
+```
+
+# 1. Descargar los datos/cargar los datos y usar los mismos conjuntos de entrenamiento y prueba  
+Guardaremos train en un objeto llamado data
+```{r}
+data <- read.csv('./train.csv') # nolint
+nrow(data)
+ncol(data)
+colnames(data)
+
+# Crear un nuevo objeto "train_vars" que contenga todas las variables de "train"
+data <- data.frame(data)
+str(data)
+# Verificar el contenido de "train_vars"
+head(data)
+```
+
+# 2. Elabore un árbol de regresión para predecir el precio de las casas usando todas las variables
+```{r}
+set.seed(123) #seteamos la semilla
+#definimos el porcentaje de prueba
+porciento <- 0.7
+filas_train <- sample(1:nrow(data), nrow(data) * porciento) # nolint
+#definimos testeo y entrenamiento
+train <- data[filas_train, ]
+test <- data[filas_train, ]
+nrow(train)
+nrow(test)
+#Verificar que sena los mismos valores
+summary(train$LandContour)
+table(train$LandContour)
+# imputar por error
+library(Hmisc)
+train_imputed <- impute(train)
+#modelo inicial
+modelo1 <- rpart(SalePrice ~ ., train_imputed, method = "class")
+rpart.plot(modelo1, box.palette = "#3898a9")
+
+y <- test[, 9]
+test <- test[, -9]
+
+colnames(test)
+ypred <- predict(modelo1, newdata = test)
+ypred <- apply(ypred, 1, function(x) colnames(ypred)[which.max(x)])
+ypred <- factor(ypred)
+
+confusionMatrix(ypred, y)
+
+
+table(train_imputed$SalePrice)
+table(y)
+table(data$SalePrice)
+```
+
+# 3. Úselo para predecir y analice el resultado. ¿Qué tal lo hizo? 
+```{r}
+
+```
+# 4. Haga, al menos, 3 modelos más cambiando el parámetro de la profundidad del árbol. ¿Cuál es el mejor modelo para predecir el precio de las casas? 
+```{r}
+
+```
+# 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor? 
+```{r}
+
+```
