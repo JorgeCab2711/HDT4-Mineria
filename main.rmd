@@ -14,39 +14,28 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Librerias utilizadas
 library(dplyr)
 library(ggplot2)
-library(cluster) #Para calcular la silueta
 library(e1071)#para cmeans
 library(mclust) #mixtures of gaussians
-library(fpc) #para hacer el plotcluster
-library(NbClust) #Para determinar el número de clusters óptimo
-library(factoextra) #Para hacer gráficos bonitos de clustering
-library(hopkins) #Para revisar si vale la pena hacer agrupamiento
-library(GGally) #Para hacer el conjunto de graficos
-library(FeatureImpCluster) #revisa importancia de var
-library(pheatmap) #Para hacer mapa de calor
 library(ggplot2) #para color
 library(caret)
 library(nortest)
 library(tidyverse)
-library(ggpubr)
-library(stats)
-library(Metrics)
 library(rpart) #para analisis de arbol
 library(rpart.plot)
 ```
 
-# 1. Descargar los datos/cargar los datos y usar los mismos conjuntos de entrenamiento y prueba  
+# 1. Descargar los data/cargar los datay usar los mismos conjuntos de entrenamiento y prueba  
 Guardaremos train en un objeto llamado data
 ```{r}
 library(caret)
 library(rpart)
 library(rpart.plot)
 
-# Cargando datos
-data <- read.csv('./train.csv')
+# Cargando data
+data <- read.csv('./train.csv') # nolint
 
-# Separando datos de entrenamiento y prueba
-set.seed(42)
+# Separando datade entrenamiento y prueba
+set.seed(456)
 train_index <- createDataPartition(data$SalePrice, p = 0.7, list = FALSE)
 train_data <- data[train_index, ]
 test_data <- data[-train_index, ]
@@ -56,12 +45,12 @@ predictors <- c("OverallCond")
 response <- "OverallQual"
 
 # Entrenando el modelo de árbol de decisión
-model <- rpart(as.formula(paste(response, "~", paste(predictors, collapse = "+"))), data = train_data, method = "class", control = rpart.control(maxdepth = 4))
+model <- rpart(as.formula(paste(response, "~", paste(predictors, collapse = "+"))), data = train_data, method = "class", control = rpart.control(maxdepth = 4)) # nolint
 
 # Graficando el árbol de decisión
-rpart.plot(model, type = 4, extra = 101, under = TRUE, main = "Árbol de decisión")
+rpart.plot(model, type = 4, extra = 101, under = TRUE, main = "Árbol de decisión") # nolint
 
-# Haciendo predicciones con los datos de prueba
+# Haciendo predicciones con los datade prueba
 predictions <- predict(model, test_data, type = "class")
 
 # Evaluando la precisión del modelo
@@ -72,53 +61,58 @@ cat("Resultado de la precision del modelo principal: ", accuracy, "\n")
 
 # 2. Elabore un árbol de regresión para predecir el precio de las casas usando todas las variables
 ```{r}
+library(rpart)
 # Seleccionando solo las columnas numéricas
-X <- data[, sapply(data, is.numeric)]
-
+X <- data[, sapply(data, is.numeric)] # nolint
 # Reemplazando los NaN por ceros.
-X[is.na(X)] <- 0
-
-# Variable a predecir.
-y <- data$SalePrice
-
-# Quitando los NaN de y.
-y[is.na(y)] <- 0
-
-# Creando el árbol.
-arbol <- rpart(y ~ ., data=X, method="anova", control=rpart.control(maxdepth=2))
-
-# Ajustando el árbol.
-
+X[is.na(X)] <- 0 # nolint
+y <- data$SalePrice # Variable a predecir.
+y[is.na(y)] <- 0 # Quitando los NaN de y.
+arbol <- rpart(SalePrice ~ ., data = X, method = "anova", control = rpart.control(maxdepth = 2))  # nolint
 # Prediciendo los valores.
-score <- summary(arbol)$rsq
-
-print("Precisión:", score)
-
-# Visualizando el árbol.
-rpart.plot(arbol, extra=1)
-
+score <- summary(arbol)$cp[length(summary(arbol)$cp)]
+cat("Precisión del arbol de regresión:", score)
+rpart.plot(arbol, extra = 1) # Visualizando el árbol.
 ```
 
 # 3. Úselo para predecir y analice el resultado. ¿Qué tal lo hizo? 
 ```{r}
 # Prediciendo el precio con el árbol de decisión.
-
-y <- data[,sapply(data, is.numeric)]
-
-# Convirtiendo los NaN a número.
-y[is.na(y)] <- 0
-
-# Prediciendo el precio.
-y_pred <- predict(arbol, newdata = y)
-
-cat("Predicción con 5 de profundidad: ", y_pred, "\n")
-
-#  Imprimiendo el resultado de manera más visible.
-cat("Predicción con 5 de profundidad: ", y_pred[1:10], "\n")
+y <- data[, sapply(data, is.numeric)]
+y[is.na(y)] <- 0 # Convirtiendo los NaN a número.
+y_pred <- predict(arbol, newdata = y) # Prediciendo el precio.
+cat("Predicción con máximo de divisiones 5 (profundidad): ") # nolint
+head(y_pred, 3)
 ```
 # 4. Haga, al menos, 3 modelos más cambiando el parámetro de la profundidad del árbol. ¿Cuál es el mejor modelo para predecir el precio de las casas? 
 ```{r}
+# Creando el modelo de árbol con profundidad de 3.
+arbol <- rpart(SalePrice ~ ., data = data, method = "anova", control = rpart.control(maxdepth = 3)) # nolint
+rpart.plot(arbol, type = 0, extra = 0, under = TRUE, main = "Árbol de decisión (PROFUNDIDAD: 3)") # nolint
+y_pred <- predict(arbol, newdata = data) # Prediciendo los valores
+cat("Precisión del árbol con divisiones maximas de 3:") # nolint
+head(y_pred, 5) #Mostrar soslo los primeros 5 valores
 
+# Creando el modelo de árbol con profundidad de 4.
+arbol <- rpart(SalePrice ~ ., data = data, method = "anova", control = rpart.control(maxdepth = 4)) # nolint
+rpart.plot(arbol, type = 0, extra = 0, under = TRUE, main = "Árbol de decisión (PROFUNDIDAD: 4)") # nolint
+y_pred <- predict(arbol, newdata = data)
+cat("Precisión del árbol con divisiones maximas de 4:") # nolint
+head(y_pred, 5)
+
+# Creando el modelo del árbol con profundidad de 6.
+arbol <- rpart(SalePrice ~ ., data = data, method = "anova", control = rpart.control(maxdepth = 6)) # nolint
+rpart.plot(arbol, type = 0, extra = 0, under = TRUE, main = "Árbol de decisión (PROFUNDIDAD: 6)") # nolint
+y_pred <- predict(arbol, newdata = data)
+cat("Precisión del árbol con divisiones máximas de  6:") # nolint
+head(y_pred, 5)
+
+# Creando el modelo del árbol con profundidad de 8.
+arbol <- rpart(SalePrice ~ ., data = data, method = "anova", control = rpart.control(maxdepth = 8)) # nolint
+rpart.plot(arbol, type = 0, extra = 0, under = TRUE, main = "Árbol de decisión (PROFUNDIDAD: 8)") # nolint
+y_pred <- predict(arbol, newdata = data)
+cat("Precisión del árbol con divisiones máximas de 8:") # nolint
+head(y_pred, 5)
 ```
 # 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor? 
 ```{r}
