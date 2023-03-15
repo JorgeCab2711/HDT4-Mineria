@@ -22,6 +22,10 @@ library(nortest)
 library(tidyverse)
 library(rpart) #para analisis de arbol
 library(rpart.plot)
+
+library(caret)
+library(rpart)
+library(rpart.plot)
 ```
 
 # 1. Descargar los data/cargar los datay usar los mismos conjuntos de entrenamiento y prueba  
@@ -118,3 +122,78 @@ head(y_pred, 5)
 ```{r}
 
 ```
+
+#6. 
+
+```{r include=FALSE}
+    datos <- read.csv("train.csv")
+    datos <- datos[ , !(names(datos) %in% c("Id","YrSold","MoSold","GarageYrBlt","MSSubClass","YearBuilt"))]
+    Cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", "GrLivArea", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "BedroomAbvGr", "KitchenAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal")
+    df_cuantitativas <- datos[Cuantitativas]
+    
+       datos$LotFrontage[is.na(datos$LotFrontage)] <- median(datos$LotFrontage, na.rm = TRUE)
+    datos$MasVnrArea[is.na(datos$MasVnrArea)] <- median(datos$MasVnrArea, na.rm = TRUE)
+    datos <- datos[ , !(names(datos) %in% c("Alley", "PoolQC", "Fence", "MiscFeature","FireplaceQu"))]
+    df_cuantitativas <- datos[Cuantitativas] 
+    df_norm <- mutate_if(datos, is.numeric, scale)
+    df_cualitativas <- df_norm[ , !(names(df_norm) %in% Cuantitativas)]
+    for (i in 1:ncol(df_cualitativas)) {
+         df_norm[,i] <- ifelse(is.na(df_norm[,i]), "Desconocido", df_norm[,i])
+    }
+    df_norm <- df_norm %>% mutate_at(colnames(df_cualitativas), function(x) as.factor(x))
+
+```
+
+```{r}
+    salePrices <- df_norm$SalePrice
+    q1 <- quantile(df_norm$SalePrice, 0.40)
+    q2 <- quantile(df_norm$SalePrice, 0.60)
+    df_norm$Classification <- sapply(df_norm$SalePrice, function(x) ifelse(x < q1, "cheap", ifelse(x < q2, "medium", "expensive")))
+    df_norm$Classification <- factor(df_norm$Classification)
+```
+
+Se realizó una agrupación de los datos de la variable "SalePrice" para crear una nueva variable llamada "Classification". Se utilizaron los cuartiles de la variable "SalePrice" para separar los valores en tres categorías diferentes. Posteriormente, se utilizó la función sapply() para recorrer cada valor de la variable "SalePrice" y asignar la categoría correspondiente a la variable "Classification". Finalmente, se convirtió la variable "Classification" en un factor para facilitar su análisis.
+
+#7 
+
+```{r}
+
+df_norm_w_SP <- df_norm[ , !(names(df_norm) %in% c("SalePrice"))]
+df_norm_w_SP <- df_norm_w_SP[ ,c("Classification","Neighborhood","OverallQual","LotFrontage","MSZoning") ]
+
+cheap <- df_norm_w_SP[df_norm_w_SP$Classification == "Economicas",]
+medium <- df_norm_w_SP[df_norm_w_SP$Classification == "Intermedias",]
+expensive <- df_norm_w_SP[df_norm_w_SP$Classification == "Caras",]
+n_cheap <- nrow(cheap)
+n_medium <- nrow(medium)
+n_expensive <- nrow(expensive)
+n_train_cheap <- round(n_cheap * 0.6)
+n_train_medium <- round(n_medium * 0.6)
+n_train_expensive <- round(n_expensive * 0.6)
+train_cheap <- cheap[sample(n_cheap, n_train_cheap), ]
+train_medium <- medium[sample(n_medium, n_train_medium), ]
+train_expensive <- expensive[sample(n_expensive, n_train_expensive), ]
+train2 <- rbind(train_cheap, train_medium, train_expensive)
+test2 <- df_norm_w_SP[!rownames(df_norm_w_SP) %in% rownames(train2), ]
+
+modelo4<- rpart(Classification~.,train2,method = "class",maxdepth=4)
+rpart.plot(modelo4)
+
+
+```
+#8 y #9
+
+Eficiencias
+
+```{r}
+    ypred <- predict(modelo4, newdata = test2)
+    ypred<-apply(ypred, 1, function(x) colnames(ypred)[which.max(x)])
+    ypred <- factor(ypred)
+    recall_score <- Recall(test2$Classification, ypred,positive = c("Caras","Intermedias","Economicas"))
+        confusionMatrix(ypred, test2$Classification)
+
+```
+
+La matriz de confusión muestra la cantidad de predicciones correctas e incorrectas para cada clase en un modelo de clasificación. En este caso, el modelo clasifica entre tres categorías: "Caras", "Economicas" e "Intermedias".
+
+La tabla muestra que de las 234 instancias de la clase "Caras" en los datos de referencia, el modelo predijo correctamente 200 y se equivocó en 8 al predecir "Economicas" y en 34 al predecir "Intermedias". De las 309 instancias de la clase "Economicas", el modelo predijo correctamente 219, se equivocó en 20 al predecir "Caras" y en 70 al predecir "Intermedias". Finalmente, de las 33 instancias de la clase "Intermedias", el modelo predijo correctamente 14, se equivocó en 14 al predecir "Caras" y en 5 al predecir "Economicas".
