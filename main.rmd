@@ -119,9 +119,7 @@ cat("Precisión del árbol con divisiones máximas de 8:") # nolint
 head(y_pred, 5)
 ```
 # 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor? 
-```{r}
-
-```
+Comparando el resultado de predicción de ahora podemos afirmar que el modelo de regresion lineal nos dio un mejor resultado ya que predijo de manera mas rapida y simple la modelacion entre la variable respuesta que neceistabamos como el precio de las casa. 
 
 #6. 
 
